@@ -5,6 +5,7 @@
     <RootNamespace>azure_functions_dotnetcore_cds_auth</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.8.2" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="3.0.1" />
   </ItemGroup>
   <ItemGroup>
