@@ -13,6 +13,8 @@ using System.Net.Http.Headers;
 using Newtonsoft.Json.Linq;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Pfe.Samples.AzureFunctions.Cds.Auth.Models;
+using Microsoft.Pfe.Samples.AzureFunctions.Cds.Auth.Components;
 
 namespace Microsoft.Pfe.Samples.AzureFunctions.Cds.Auth
 {
@@ -31,32 +33,35 @@ namespace Microsoft.Pfe.Samples.AzureFunctions.Cds.Auth
             string certificatePath = Environment.GetEnvironmentVariable("CertificatePath");
             X509Certificate2 certificate = null;
             if(certificatePath == null) {
-                string certificateThumbprint = Environment.GetEnvironmentVariable("CertificateThumbprint");
+                string certificateThumbprint = Environment.GetEnvironmentVariable("WEBSITE_LOAD_CERTIFICATES");
 
                 const string dir = "/var/ssl/private";
 
                 certificatePath = $"{dir}/{certificateThumbprint}.p12";
             }
-            var certContents = File.ReadAllBytes(Environment.GetEnvironmentVariable("CertificatePath"));
+            var certContents = File.ReadAllBytes(certificatePath);
             certificate = new X509Certificate2(
                 certContents,
                 Environment.GetEnvironmentVariable("CertificatePassword"));
             
-            IConfidentialClientApplication app = ConfidentialClientApplicationBuilder.Create(clientId)
-                .WithCertificate(certificate)
-                .WithAuthority(authority)
-                .Build();
-            var scopes = new [] { new Uri(cdsEnvironmentUrl, "/.default").AbsoluteUri };
+            var config = new CertificateAuthenticationConfiguration {
+                Authority = authority,
+                CdsEnvironmentUri = cdsEnvironmentUrl,
+                ClientCertificate = certificate,
+                ClientId = clientId
+            };
 
+            var authenticator = new ClientCertificateAuthenticator(config);
+            
             log.LogInformation("Retrieving access token...");
-            string token = (await app.AcquireTokenForClient(scopes).ExecuteAsync()).AccessToken;
+            string token = await authenticator.GetAccessTokenAsync();
             log.LogInformation("Successfully retrieved access token.");
 
             var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Accept", "application/json");
             client.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
-            
+
             log.LogInformation("Querying API for contacts...");
             HttpResponseMessage response = await client.GetAsync(
                 new Uri(
