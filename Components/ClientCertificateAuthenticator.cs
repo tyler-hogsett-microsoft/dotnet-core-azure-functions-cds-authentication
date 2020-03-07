@@ -1,18 +1,29 @@
 
 using System;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 using Microsoft.Identity.Client;
-using Microsoft.Pfe.Samples.AzureFunctions.Cds.Auth.Models;
 using Microsoft.Pfe.Samples.AzureFunctions.Cds.Auth.Services;
 
 namespace Microsoft.Pfe.Samples.AzureFunctions.Cds.Auth.Components
 {
     public class ClientCertificateAuthenticator : ITokenService
     {
-        private readonly CertificateAuthenticationConfiguration Config;
+        private readonly Uri Authority;
+        private readonly string ClientId;
+        private readonly Uri CdsEnvironmentUri;
 
-        public ClientCertificateAuthenticator(CertificateAuthenticationConfiguration config) {
-            Config = config;
+        private readonly X509Certificate2 Certificate;
+
+        public ClientCertificateAuthenticator(
+            IOptions<Options> options,
+            X509Certificate2 certificate
+        ) {
+            Authority = options.Value.Authority;
+            ClientId = options.Value.ClientId;
+            CdsEnvironmentUri = options.Value.CdsEnvironmentUri;
+            Certificate = certificate;
         }
 
         public async Task<string> GetAccessTokenAsync()
@@ -25,16 +36,16 @@ namespace Microsoft.Pfe.Samples.AzureFunctions.Cds.Auth.Components
         
         private IConfidentialClientApplication BuildApp() {
             return ConfidentialClientApplicationBuilder
-                .Create(Config.ClientId)
-                .WithCertificate(Config.ClientCertificate)
-                .WithAuthority(Config.Authority)
+                .Create(ClientId)
+                .WithCertificate(Certificate)
+                .WithAuthority(Authority)
                 .Build();
         }
 
         private string[] CreateScopes() {
             return new [] {
                 new Uri(
-                    Config.CdsEnvironmentUri,
+                    CdsEnvironmentUri,
                     "/.default"
                 ).AbsoluteUri };
         }

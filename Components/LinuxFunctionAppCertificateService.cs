@@ -1,17 +1,21 @@
 
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.Pfe.Samples.AzureFunctions.Cds.Auth.Services;
 
 namespace Microsoft.Pfe.Samples.AzureFunctions.Cds.Auth.Components
 {
     public class LinuxFunctionAppCertificateService : ICertificateService
     {
-        private readonly string Thumbprint;
-        private readonly string Password;
+        private readonly string CertificateThumbprint;
 
-        public LinuxFunctionAppCertificateService(string thumbprint, string password = null) {
-            Thumbprint = thumbprint;
-            Password = password;
+        public LinuxFunctionAppCertificateService(IOptions<Options> options) {
+            CertificateThumbprint = options.Value.CertificateThumbprint;
+        }
+
+        public LinuxFunctionAppCertificateService(string certificateThumbprint) {
+            CertificateThumbprint = certificateThumbprint;
         }
 
         public X509Certificate2 GetCertificate()
@@ -24,9 +28,7 @@ namespace Microsoft.Pfe.Samples.AzureFunctions.Cds.Auth.Components
         {
             const string CertificateDirectory = "/var/ssl/private";
             var service = new FileSystemCertificateService(
-                $"{CertificateDirectory}/{Thumbprint}.p12",
-                Password
-            );
+                $"{CertificateDirectory}/{CertificateThumbprint}.p12");
             return service;
         }
     }
